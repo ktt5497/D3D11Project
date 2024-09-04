@@ -62,7 +62,7 @@ HRESULT Window::Create(
 	bool statsInTitleBar,
 	void (*resizeCallback)())
 {
-	// Verify
+	// Verify so that it cannot create second window.
 	if (windowCreated)
 		return E_FAIL;
 
@@ -77,7 +77,7 @@ HRESULT Window::Create(
 	// appropriate window class struct
 	WNDCLASS wndClass = {}; // Zero out the memory
 	wndClass.style = CS_HREDRAW | CS_VREDRAW;	// Redraw on horizontal or vertical movement/adjustment
-	wndClass.lpfnWndProc = ProcessMessage;
+	wndClass.lpfnWndProc = ProcessMessage; //long pointer function window process
 	wndClass.cbClsExtra = 0;
 	wndClass.cbWndExtra = 0;
 	wndClass.hInstance = appInstance;						// Our app's handle
