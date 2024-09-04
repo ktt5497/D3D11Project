@@ -4,6 +4,9 @@
 #include "Input.h"
 #include "PathHelpers.h"
 #include "Window.h"
+#include "imgui.h"
+#include "imgui_impl_dx11.h"
+#include "imgui_impl_win32.h"
 
 #include <DirectXMath.h>
 
@@ -13,6 +16,13 @@
 
 // For the DirectX Math library
 using namespace DirectX;
+
+//declarations
+float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+bool showDemo = false;
+int num = 200;
+float fnum = 100;
+bool check = true;
 
 // --------------------------------------------------------
 // Called once per program, after the window and graphics API
@@ -47,6 +57,15 @@ void Game::Initialize()
 		Graphics::Context->VSSetShader(vertexShader.Get(), 0, 0);
 		Graphics::Context->PSSetShader(pixelShader.Get(), 0, 0);
 	}
+
+	// Initializing ImGui itself and platform/renderer backends
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(Window::Handle());
+	ImGui_ImplDX11_Init(Graphics::Device.Get(), Graphics::Context.Get());
+
+	// ImGui Style
+	ImGui::StyleColorsDark();
 }
 
 
@@ -58,7 +77,10 @@ void Game::Initialize()
 // --------------------------------------------------------
 Game::~Game()
 {
-
+	// ImGui clean ups
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
 
 
@@ -234,12 +256,71 @@ void Game::OnResize()
 {
 }
 
+// Helper methods
+void Game::ImGuiUpdate(float deltaTime) {
+	//Fresh data
+	ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = deltaTime;
+	io.DisplaySize.x = (float)Window::Width();
+	io.DisplaySize.y = (float)Window::Height();
+
+	//Resetting frames
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	//Determine new input capture
+	Input::SetKeyboardCapture(io.WantCaptureKeyboard);
+	Input::SetMouseCapture(io.WantCaptureMouse);
+
+	//Show demo window
+	if(showDemo) ImGui::ShowDemoWindow();
+}
+
+void Game::BuildUI()
+{
+	ImGui::Begin("Inspector"); // Inspector
+
+	if (ImGui::TreeNode("App Details")) {
+		ImGui::Text("Frame rate: %f fps", ImGui::GetIO().Framerate); //displaying frame rate
+		ImGui::Text("Window Client Size: %dx%d", Window::Width(), Window::Height()); //displaying window size
+
+		//color og background
+		ImGui::ColorEdit4("Background Color", color);
+
+		//Button to show ImGui Demo
+		if (showDemo == false) {
+			if (ImGui::Button("Show ImGui Demo Window")) showDemo = true;
+		}
+		else {
+			if (ImGui::Button("Close ImGui Demo Window")) showDemo = false;
+		}
+
+		ImGui::TreePop(); // popped app details
+	}
+
+	if (ImGui::TreeNode("Random Things")) {
+		ImGui::InputInt("size", &num);
+		ImGui::DragFloat("float drag", &fnum);
+		ImGui::Checkbox("check", &check);
+	
+		ImGui::TreePop();
+
+	}
+
+	ImGui::End(); //Inspector
+
+
+}
+
 
 // --------------------------------------------------------
 // Update your game here - user input, move objects, AI, etc.
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
+	ImGuiUpdate(deltaTime);
+	BuildUI();
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
@@ -256,7 +337,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
 		// Clear the back buffer (erase what's on screen) and depth buffer
-		const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+		/*const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };*/
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	color);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
@@ -285,6 +366,11 @@ void Game::Draw(float deltaTime, float totalTime)
 			3,     // The number of indices to use (we could draw a subset if we wanted)
 			0,     // Offset to the first index we want to use
 			0);    // Offset to add to each index when looking up vertices
+	}
+	//ImGui
+	{
+		ImGui::Render();
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 	}
 
 	// Frame END
