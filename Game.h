@@ -4,7 +4,7 @@
 #include <wrl/client.h>
 #include <vector>
 #include <memory>
-
+#include "Entity.h"
 #include "Mesh.h"
 
 class Game
@@ -22,6 +22,14 @@ public:
 	void Draw(float deltaTime, float totalTime);
 	void OnResize();
 
+	float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+	bool showDemo = false;
+	int num = 200;
+	float fnum = 100;
+	bool check = true;
+
+	VertexShaderData vsData;
+
 private:
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
@@ -37,6 +45,10 @@ private:
 
 	//storing all the meshes in list/vector
 	std::vector<std::shared_ptr<Mesh>> meshList;
+
+	std::vector <std::shared_ptr<Entity>> entities;
+
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vsConstantBuffer;
 
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;

@@ -7,7 +7,7 @@
 class Mesh
 {
 public:
-	Mesh(const char* name, Vertex* vert, unsigned int totalVerts, unsigned int* indices, unsigned int totalIndices);
+	Mesh(const char* name, Vertex* vert, size_t totalVerts, unsigned int* indices, size_t totalIndices);
 	~Mesh();
 	Mesh(const Mesh&) = delete; // Remove copy constructor
 	Mesh& operator=(const Mesh&) = delete; // Remove copy-assignment operator

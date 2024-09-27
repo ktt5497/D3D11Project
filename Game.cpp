@@ -10,6 +10,7 @@
 #include "imgui_impl_win32.h"
 #include <string>
 #include <DirectXMath.h>
+#include "BufferStructs.h"
 
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
@@ -17,13 +18,6 @@
 
 // For the DirectX Math library
 using namespace DirectX;
-
-//declarations
-float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
-bool showDemo = false;
-int num = 200;
-float fnum = 100;
-bool check = true;
 
 // --------------------------------------------------------
 // Called once per program, after the window and graphics API
@@ -57,6 +51,24 @@ void Game::Initialize()
 		//    these calls will need to happen multiple times per frame
 		Graphics::Context->VSSetShader(vertexShader.Get(), 0, 0);
 		Graphics::Context->PSSetShader(pixelShader.Get(), 0, 0);
+
+	}
+
+	//Creating the CONSTANT BUFFER
+	{
+		unsigned int size = sizeof(VertexShaderData);
+		size = (size + 15) / 16 * 16;
+
+		D3D11_BUFFER_DESC cbDesc = {};
+		cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		cbDesc.ByteWidth = size;
+		cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+
+		Graphics::Device->CreateBuffer(&cbDesc, 0, vsConstantBuffer.GetAddressOf());
+
+		vsData.colorTint = XMFLOAT4(1.0f, 0.5f, 0.5f, 1.0f);
+		//vsData.offset = XMFLOAT3(0.25f, 0.0f, 0.0f);
 	}
 
 	// Initializing ImGui itself and platform/renderer backends
@@ -227,7 +239,8 @@ void Game::CreateGeometry()
 		4, 5, 3
 	};
 
-	//puting the mesh data into list so it can be drawn
+	//Creating Meshes
+	//puting the mesh data into list so data can be displayed
 	std::shared_ptr<Mesh> triangle = std::make_shared<Mesh>("Triangle", vertices1, ARRAYSIZE(vertices1), indices1, ARRAYSIZE(indices1));
 	meshList.push_back(triangle);
 
@@ -237,6 +250,24 @@ void Game::CreateGeometry()
 	std::shared_ptr<Mesh> boat = std::make_shared<Mesh>("Boat", vertices3, ARRAYSIZE(vertices3), indices3, ARRAYSIZE(indices3));
 	meshList.push_back(boat);
 
+	//Creating Game Entity
+	std::shared_ptr<Entity> entity1 = std::make_shared<Entity>(triangle);
+	std::shared_ptr<Entity> entity2 = std::make_shared<Entity>(quad);
+	std::shared_ptr<Entity> entity3 = std::make_shared<Entity>(boat);
+	std::shared_ptr<Entity> entity4 = std::make_shared<Entity>(boat);
+	std::shared_ptr<Entity> entity5 = std::make_shared<Entity>(boat);
+
+	entity1->GetTransform().SetPosition(XMFLOAT3(0.0, 0.0, 0.0));
+	entity2->GetTransform().SetPosition(XMFLOAT3(0.0, 0.0, 0.0));
+	entity3->GetTransform().SetPosition(XMFLOAT3(0.0, 0.0, 0.0));
+	entity4->GetTransform().SetPosition(XMFLOAT3(-0.2, 0.6, 0.0));
+	entity5->GetTransform().SetPosition(XMFLOAT3(-0.09, 0.9, 0.0));
+
+	entities.push_back(entity1);
+	entities.push_back(entity2);
+	entities.push_back(entity3);
+	entities.push_back(entity4);
+	entities.push_back(entity5);
 	
 }
 
@@ -306,6 +337,36 @@ void Game::BuildUI()
 		ImGui::TreePop();
 	}
 
+	//float offset[3] = {vsData.offset.x, vsData.offset.y, vsData.offset.z };
+	float color[4] = { vsData.colorTint.x, vsData.colorTint.y, vsData.colorTint.z, vsData.colorTint.w };
+
+	if (ImGui::TreeNode("Scene Entities")) {
+		for (int i = 0; i < entities.size(); i++) {
+			std::string label = "Entity #" + std::to_string(i + 1);
+			ImGui::PushID(i);
+			XMFLOAT3 position = entities[i]->GetTransform().GetPosition();
+			XMFLOAT3 rotation = entities[i]->GetTransform().GetPitchYawRoll();
+			XMFLOAT3 scale = entities[i]->GetTransform().GetScale();
+
+			if (ImGui::TreeNode(label.c_str())) {
+
+				ImGui::SliderFloat3("Position", &position.x, -1.0f, 1.0f);
+				entities[i]->GetTransform().SetPosition(position);
+
+				ImGui::SliderFloat3("Rotation (Radians)", &rotation.x, -180.0f, 180.0f);
+				entities[i]->GetTransform().SetRotation(rotation.x, rotation.y, rotation.z);
+
+				ImGui::SliderFloat3("Scale", &scale.x, 0.1f, 2.0f);
+				entities[i]->GetTransform().SetScale(scale);
+
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+		
+		ImGui::TreePop();
+	}
+
 	if (ImGui::TreeNode("Random Things")) {
 		ImGui::InputInt("size", &num);
 		ImGui::DragFloat("float drag", &fnum);
@@ -326,10 +387,14 @@ void Game::Update(float deltaTime, float totalTime)
 {
 	ImGuiUpdate(deltaTime);
 	BuildUI();
+
+	entities[0]->GetTransform().Rotate(XMFLOAT3(0, 0, deltaTime));
+
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
 }
+
 
 
 // --------------------------------------------------------
@@ -347,12 +412,26 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
+	//ColorTint and Offset
+	{
+
+		D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
+		Graphics::Context->Map(vsConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);
+
+		memcpy(mappedBuffer.pData, &vsData, sizeof(vsData));
+
+		Graphics::Context->Unmap(vsConstantBuffer.Get(), 0);
+
+		//Binding Constant Buffer
+		Graphics::Context->VSSetConstantBuffers(0, 1, vsConstantBuffer.GetAddressOf());
+	}
+
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
-		for (int i = 0; i < meshList.size(); i++) {
-			meshList[i]->DrawMesh();
+		for (int i = 0; i < entities.size(); i++) {
+			entities[i]->Draw(vsConstantBuffer);
 		}
 	}
 	//ImGui
