@@ -6,6 +6,8 @@
 #include <DirectXMath.h>
 #include <wrl/client.h>
 #include "BufferStructs.h"
+#include "Camera.h"
+#include <memory>
 
 
 class Entity
@@ -18,9 +20,9 @@ public:
 	Entity& operator=(const Entity&) = delete;
 
 	std::shared_ptr<Mesh> GetMesh();
-	Transform& GetTransform();
+	Transform* GetTransform();
 
-	void Draw(Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer);
+	void Draw(Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer, std::shared_ptr<Camera> camera);
 
 private:
 	Transform object;

@@ -71,6 +71,44 @@ void Game::Initialize()
 		//vsData.offset = XMFLOAT3(0.25f, 0.0f, 0.0f);
 	}
 
+	cameraList.push_back(std::make_shared<Camera>((float)Window::Width() / Window::Height(), 
+		XMFLOAT3(0.0f, 0.0f, -5.0f), 
+		XMFLOAT3(0.0f, 0.0f, 0.0f), 
+		5.0f, 1.0f, 
+		XM_PIDIV4, 
+		0.001f, 
+		1000.0f, 
+		false));
+
+	cameraList.push_back(std::make_shared<Camera>((float)Window::Width() / Window::Height(),
+		XMFLOAT3(3.0f, 6.0f, -5.0f),
+		XMFLOAT3(9.0f, 1.0f, 0.0f),
+		5.0f, 1.0f,
+		XM_PIDIV2,
+		0.001f,
+		1000.0f,
+		false));
+
+	cameraList.push_back(std::make_shared<Camera>((float)Window::Width() / Window::Height(),
+		XMFLOAT3(1.0f, 2.0f, -5.0f),
+		XMFLOAT3(5.0f, -2.0f, 0.0f),
+		5.0f, 1.0f,
+		XM_PIDIV4,
+		0.001f,
+		1000.0f,
+		false));
+
+	cameraList.push_back(std::make_shared<Camera>((float)Window::Width() / Window::Height(),
+		XMFLOAT3(-1.0f, 4.0f, -5.0f),
+		XMFLOAT3(-2.0f, -1.0f, 0.0f),
+		5.0f, 1.0f,
+		XM_PIDIV2,
+		0.001f,
+		1000.0f,
+		false));
+
+	camera = cameraList[activeCamera];
+
 	// Initializing ImGui itself and platform/renderer backends
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -94,6 +132,7 @@ Game::~Game()
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+
 }
 
 
@@ -257,11 +296,11 @@ void Game::CreateGeometry()
 	std::shared_ptr<Entity> entity4 = std::make_shared<Entity>(boat);
 	std::shared_ptr<Entity> entity5 = std::make_shared<Entity>(boat);
 
-	entity1->GetTransform().SetPosition(XMFLOAT3(0.0, 0.0, 0.0));
-	entity2->GetTransform().SetPosition(XMFLOAT3(0.0, 0.0, 0.0));
-	entity3->GetTransform().SetPosition(XMFLOAT3(0.0, 0.0, 0.0));
-	entity4->GetTransform().SetPosition(XMFLOAT3(-0.2, 0.6, 0.0));
-	entity5->GetTransform().SetPosition(XMFLOAT3(-0.09, 0.9, 0.0));
+	entity1->GetTransform()->SetPosition(XMFLOAT3(0.0f, 0.0f, 0.0f));
+	entity2->GetTransform()->SetPosition(XMFLOAT3(0.0f, 0.0f, 0.0f));
+	entity3->GetTransform()->SetPosition(XMFLOAT3(0.0f, 0.0f, 0.0f));
+	entity4->GetTransform()->SetPosition(XMFLOAT3(-0.2f, 0.6f, 0.0f));
+	entity5->GetTransform()->SetPosition(XMFLOAT3(-0.09f, 0.9f, 0.0f));
 
 	entities.push_back(entity1);
 	entities.push_back(entity2);
@@ -278,6 +317,10 @@ void Game::CreateGeometry()
 // --------------------------------------------------------
 void Game::OnResize()
 {
+	if (camera) 
+	{
+		camera->UpdateProjectionMatrix((float)Window::Width() / Window::Height());
+	};
 }
 
 // Helper methods
@@ -344,26 +387,42 @@ void Game::BuildUI()
 		for (int i = 0; i < entities.size(); i++) {
 			std::string label = "Entity #" + std::to_string(i + 1);
 			ImGui::PushID(i);
-			XMFLOAT3 position = entities[i]->GetTransform().GetPosition();
-			XMFLOAT3 rotation = entities[i]->GetTransform().GetPitchYawRoll();
-			XMFLOAT3 scale = entities[i]->GetTransform().GetScale();
+			XMFLOAT3 position = entities[i]->GetTransform()->GetPosition();
+			XMFLOAT3 rotation = entities[i]->GetTransform()->GetPitchYawRoll();
+			XMFLOAT3 scale = entities[i]->GetTransform()->GetScale();
 
 			if (ImGui::TreeNode(label.c_str())) {
 
 				ImGui::SliderFloat3("Position", &position.x, -1.0f, 1.0f);
-				entities[i]->GetTransform().SetPosition(position);
+				entities[i]->GetTransform()->SetPosition(position);
 
 				ImGui::SliderFloat3("Rotation (Radians)", &rotation.x, -180.0f, 180.0f);
-				entities[i]->GetTransform().SetRotation(rotation.x, rotation.y, rotation.z);
+				entities[i]->GetTransform()->SetRotation(rotation.x, rotation.y, rotation.z);
 
 				ImGui::SliderFloat3("Scale", &scale.x, 0.1f, 2.0f);
-				entities[i]->GetTransform().SetScale(scale);
+				entities[i]->GetTransform()->SetScale(scale);
 
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
 		}
 		
+		ImGui::TreePop();
+	}
+
+	//Camera Switching
+	std::string cameraLabel = "Camera in use: " + std::to_string(activeCamera + 1);
+	if (ImGui::TreeNode(cameraLabel.c_str())) {
+
+		if (ImGui::TreeNode("Cameras")) {
+			if (ImGui::Button("Camera 1 ([0])")) { activeCamera = 0; camera = cameraList[activeCamera]; }
+			if (ImGui::Button("Camera 2 ([1])")) { activeCamera = 1; camera = cameraList[activeCamera]; }
+			if (ImGui::Button("Camera 3 ([3])")) { activeCamera = 2; camera = cameraList[activeCamera]; }
+			if (ImGui::Button("Camera 4 ([4])")) { activeCamera = 3; camera = cameraList[activeCamera]; }
+			ImGui::TreePop();
+		}
+
+
 		ImGui::TreePop();
 	}
 
@@ -388,7 +447,9 @@ void Game::Update(float deltaTime, float totalTime)
 	ImGuiUpdate(deltaTime);
 	BuildUI();
 
-	entities[0]->GetTransform().Rotate(XMFLOAT3(0, 0, deltaTime));
+	entities[0]->GetTransform()->Rotate(XMFLOAT3(0, 0, deltaTime));
+
+	camera->Update(deltaTime);
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
@@ -431,7 +492,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
 		for (int i = 0; i < entities.size(); i++) {
-			entities[i]->Draw(vsConstantBuffer);
+			entities[i]->Draw(vsConstantBuffer, camera);
 		}
 	}
 	//ImGui

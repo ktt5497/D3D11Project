@@ -6,6 +6,7 @@
 #include <memory>
 #include "Entity.h"
 #include "Mesh.h"
+#include "Camera.h"
 
 class Game
 {
@@ -27,6 +28,7 @@ public:
 	int num = 200;
 	float fnum = 100;
 	bool check = true;
+	int activeCamera = 0;
 
 	VertexShaderData vsData;
 
@@ -45,6 +47,9 @@ private:
 
 	//storing all the meshes in list/vector
 	std::vector<std::shared_ptr<Mesh>> meshList;
+
+	std::shared_ptr<Camera> camera;
+	std::vector<std::shared_ptr<Camera>> cameraList;
 
 	std::vector <std::shared_ptr<Entity>> entities;
 

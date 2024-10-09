@@ -15,12 +15,12 @@ std::shared_ptr<Mesh> Entity::GetMesh()
 	return mesh;
 }
 
-Transform& Entity::GetTransform()
+Transform* Entity::GetTransform()
 {
-	return object;
+	return &object;
 }
 
-void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer)
+void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer, std::shared_ptr<Camera> camera)
 {
 	//preparing world matrix for entity
 	DirectX::XMFLOAT4X4 worldMatrix = object.GetWorldMatrix();
@@ -29,6 +29,8 @@ void Entity::Draw(Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer)
 	VertexShaderData vsData = {};
 	vsData.colorTint = DirectX::XMFLOAT4(1.0f, 0.5f, 0.5f, 1.0f);
 	vsData.world = object.GetWorldMatrix();
+	vsData.viewMatrix = camera->GetViewMatrix();
+	vsData.projectionMatrix = camera->GetProjMatrix();
 
 	D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
 	Graphics::Context->Map(constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);
